@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سوشيال شغل</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; text-align: center; }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .card img { width: 100%; height: 200px; object-fit: cover; }
+        .card-body { padding: 20px; }
+        .card h3 { color: #333; margin-bottom: 10px; }
+        .card p { color: #666; margin-bottom: 15px; font-size: 14px; }
+        .price { font-size: 24px; color: #667eea; font-weight: bold; }
+        .delivery { color: #999; font-size: 13px; margin-top: 5px; }
+        .btn { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #5568d3; }
+        .btn-danger { background: #e53e3e; }
+        .btn-danger:hover { background: #c53030; }
+        .admin { background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .admin h2 { margin-bottom: 20px; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .loading { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 سوشيال شغل</h1>
+            <p>منصتك لخدمات السوشيال ميديا والتصميم</p>
+        </header>
+
+        <div class="admin">
+            <h2>➕ إضافة خدمة جديدة</h2>
+            <div class="form-group">
+                <label>اسم الخدمة</label>
+                <input type="text" id="title" placeholder="مثال: باقة متابعين انستجرام">
+            </div>
+            <div class="form-group">
+                <label>الوصف</label>
+                <textarea id="description" rows="3" placeholder="وصف تفصيلي للخدمة"></textarea>
+            </div>
+            <div class="form-group">
+                <label>السعر (جنيه)</label>
+                <input type="number" id="price" placeholder="100">
+            </div>
+            <div class="form-group">
+                <label>مدة التسليم</label>
+                <input type="text" id="delivery" placeholder="خلال 24 ساعة">
+            </div>
+            <div class="form-group">
+                <label>رابط الصورة</label>
+                <input type="text" id="image" placeholder="https://images.unsplash.com/...">
+            </div>
+            <button class="btn" onclick="addService()">إضافة الخدمة</button>
+        </div>
+
+        <h2 style="margin-bottom: 20px; color: #333;">📦 الخدمات المتاحة</h2>
+        <div id="services" class="grid">
+            <div class="loading">جاري التحميل...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/services';
+
+        async function loadServices() {
+            try {
+                const res = await fetch(API_URL);
+                const services = await res.json();
+                const container = document.getElementById('services');
+                
+                if (services.length === 0) {
+                    container.innerHTML = '<div class="loading">لا توجد خدمات حالياً</div>';
+                    return;
+                }
+
+                container.innerHTML = services.map(s => `
+                    <div class="card">
+                        <img src="${s.image || 'https://via.placeholder.com/400x200'}" alt="${s.title}">
+                        <div class="card-body">
+                            <h3>${s.title}</h3>
+                            <p>${s.description || 'لا يوجد وصف'}</p>
+                            <div class="price">${s.price} جنيه</div>
+                            <div class="delivery">⏱️ ${s.delivery || 'غير محدد'}</div>
+                            <button class="btn btn-danger" onclick="deleteService(${s.id})">🗑️ حذف</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('services').innerHTML = '<div class="loading">خطأ في تحميل الخدمات</div>';
+            }
+        }
+
+        async function addService() {
+            const data = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                price: document.getElementById('price').value,
+                delivery: document.getElementById('delivery').value,
+                image: document.getElementById('image').value
+            };
+
+            if (!data.title || !data.price) {
+                alert('اكتب اسم الخدمة والسعر على الأقل');
+                return;
+            }
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            document.getElementById('title').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('delivery').value = '';
+            document.getElementById('image').value = '';
+            
+            loadServices();
+        }
+
+        async function deleteService(id) {
+            if (!confirm('متأكد عايز تحذف الخدمة دي؟')) return;
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            loadServices();
+        }
+
+        loadServices();
+    </script>
+</body>
+</html>
