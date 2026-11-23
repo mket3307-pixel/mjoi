@@ -12,48 +12,117 @@
         
         <div class="bg-gray-800 p-6 rounded-lg mb-6">
             <h2 class="text-2xl mb-4">أضف خدمة جديدة</h2>
-            <input id="title" placeholder="اسم الخدمة" class="w-full p-2 mb-3 bg-gray-700 rounded">
-            <input id="price" placeholder="السعر" class="w-full p-2 mb-3 bg-gray-700 rounded">
-            <textarea id="desc" placeholder="الوصف" class="w-full p-2 mb-3 bg-gray-700 rounded"></textarea>
-            <button onclick="addService()" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">إضافة</button>
+            <input id="title" placeholder="اسم الخدمة" class="w-full p-2 mb-3 bg-gray-700 rounded text-white">
+            <input id="price" placeholder="السعر" class="w-full p-2 mb-3 bg-gray-700 rounded text-white">
+            <textarea id="desc" placeholder="الوصف" class="w-full p-2 mb-3 bg-gray-700 rounded text-white"></textarea>
+            <button onclick="addService()" id="addBtn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">إضافة</button>
         </div>
 
+        <div id="loading" class="text-center text-xl">جاري التحميل...</div>
         <div id="services" class="grid gap-4"></div>
     </div>
 
     <script>
-        function loadServices() {
-            const services = JSON.parse(localStorage.getItem('services') || '[]');
-            const container = document.getElementById('services');
-            container.innerHTML = services.map((s, i) => `
-                <div class="bg-gray-800 p-4 rounded-lg">
-                    <h3 class="text-xl font-bold text-blue-400">${s.title}</h3>
-                    <p class="my-2">${s.desc}</p>
-                    <p class="text-green-400 font-bold">${s.price} جنيه</p>
-                    <button onclick="deleteService(${i})" class="bg-red-600 px-4 py-1 rounded mt-2">حذف</button>
-                </div>
-            `).join('');
+        const BIN_ID = '6b04a26fac6210605a9ee65d';
+        const API_KEY = '$2a$10$69IXxvfTlGFiMhsBHxm1.Ojjkl0CgrN62ssNv0GJ6ZxTaA8uFx6oC';
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+        async function loadServices() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const res = await fetch(API_URL + '/latest', {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const data = await res.json();
+                const services = data.record.services || [];
+                
+                const container = document.getElementById('services');
+                if (services.length === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-400">مفيش خدمات لسه. ضيف أول خدمة!</p>';
+                } else {
+                    container.innerHTML = services.map((s, i) => `
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <h3 class="text-xl font-bold text-blue-400">${s.title}</h3>
+                            <p class="my-2 text-gray-300">${s.desc}</p>
+                            <p class="text-green-400 font-bold text-lg">${s.price} جنيه</p>
+                            <button onclick="deleteService(${i})" class="bg-red-600 px-4 py-1 rounded mt-2 hover:bg-red-700">حذف</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                alert('في مشكلة في تحميل البيانات');
+            }
+            document.getElementById('loading').style.display = 'none';
         }
 
-        function addService() {
-            const services = JSON.parse(localStorage.getItem('services') || '[]');
-            services.push({
-                title: document.getElementById('title').value,
-                price: document.getElementById('price').value,
-                desc: document.getElementById('desc').value
-            });
-            localStorage.setItem('services', JSON.stringify(services));
-            loadServices();
-            document.getElementById('title').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('desc').value = '';
+        async function addService() {
+            const title = document.getElementById('title').value;
+            const price = document.getElementById('price').value;
+            const desc = document.getElementById('desc').value;
+            
+            if (!title || !price) {
+                alert('اكتب اسم الخدمة والسعر على الأقل');
+                return;
+            }
+
+            document.getElementById('addBtn').disabled = true;
+            document.getElementById('addBtn').innerText = 'جاري الإضافة...';
+
+            try {
+                const res = await fetch(API_URL + '/latest', {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const data = await res.json();
+                const services = data.record.services || [];
+                
+                services.push({ title, price, desc });
+                
+                await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify({ services })
+                });
+
+                document.getElementById('title').value = '';
+                document.getElementById('price').value = '';
+                document.getElementById('desc').value = '';
+                loadServices();
+            } catch (err) {
+                alert('في مشكلة في الإضافة');
+            }
+            
+            document.getElementById('addBtn').disabled = false;
+            document.getElementById('addBtn').innerText = 'إضافة';
         }
 
-        function deleteService(i) {
-            const services = JSON.parse(localStorage.getItem('services') || '[]');
-            services.splice(i, 1);
-            localStorage.setItem('services', JSON.stringify(services));
-            loadServices();
+        async function deleteService(i) {
+            if (!confirm('متأكد عايز تمسح الخدمة دي؟')) return;
+            
+            try {
+                const res = await fetch(API_URL + '/latest', {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const data = await res.json();
+                const services = data.record.services || [];
+                
+                services.splice(i, 1);
+                
+                await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify({ services })
+                });
+                
+                loadServices();
+            } catch (err) {
+                alert('في مشكلة في الحذف');
+            }
         }
 
         loadServices();
